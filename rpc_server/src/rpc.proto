@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package protorpc;
+
+enum RPC_TYPE
+{
+    RPC_UNKNOWN = 0;
+    RPC_PING    = 1; // Empty rpc, no data sent
+    RPC_DATA    = 2; // Raw data rpc
+    RPC_ECHO    = 3; // Protobuf rpc
+}
+
+message EchoRequest
+{
+    string msg = 1;
+}
+
+message EchoResponse 
+{
+    string msg = 1;
+}
+
