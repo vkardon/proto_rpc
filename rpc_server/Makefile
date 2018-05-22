@@ -93,6 +93,8 @@ endif
 # Build target(s)
 ifeq "$(OS)" "Linux"
   all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN) $(TARGET_SMT)
+else ifeq "$(OS)" "SunOS"
+  all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN) $(TARGET_SMT)
 else
   all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN)
 endif
