@@ -1,11 +1,5 @@
-/*
-Commercial-in-confidence information of Mesh Networks Holdings IP Pty Ltd atf the Mesh Networks IP Unit Trust. 
-Not to be disclosed without the written consent of Mesh Networks Holdings IP Pty Ltd.
-Copyright 2013 - Mesh Networks Holdings IP Pty Ltd atf Mesh Networks IP Unit Trust
-*/
-
 //
-//  ThreadPool.cpp
+//  threadPool.cpp
 //
 #include <memory.h>
 //#include <stdio.h> // for printf
