@@ -31,21 +31,14 @@ public:
             // Protobuf test
             req.set_msg("Client pid=" + std::to_string(getpid()) + ", call #" + std::to_string(i+1));
             
-            //printf("%s: Call() #%d, req='%s'\n", __func__, i+1, req.msg().c_str());
-
             clnt_stat res = Call(protorpc::RPC_ECHO, &req, &resp);
-            //sleep(1);
-
             if(res != RPC_SUCCESS)
             {
                 printf("%s: Call() failed\n", __func__);
-                //assert(false);
                 return false;
             }
 
             // Read response
-            //printf("%s: Call() #%d, resp='%s'\n", __func__, i+1, resp.msg().c_str());
-            
             if(req.msg() != resp.msg())
             {
                 printf("%s: Call() failed: response is different from request:\n", __func__);
@@ -69,20 +62,16 @@ public:
         for(int i = 0; i < numRpcs; ++i)
         {
             // Data buffer test
-            char* req = strdup("Hello from RPC client!");
+            const char* req = "Hello from RPC client!";
             void* resp = NULL;
             size_t respSize = 0;
             
             printf("%s: Call() req ='%s'\n", __func__, req);
 
             clnt_stat res = Call(protorpc::RPC_DATA, req, strlen(req), resp, respSize);
-
-            free(req);
-
             if(res != RPC_SUCCESS)
             {
                 printf("%s: Call() failed\n", __func__);
-                //assert(false);
                 return false;
             }
             else
@@ -91,9 +80,10 @@ public:
                 printf("%s: Call() resp='%s'\n", __func__, val.c_str());
             }
 
+            // Clean up...
             if(resp)
-                free(resp); // Clean up...
-        } // end of for
+                free(resp);
+        }
          
         return true;
     }
@@ -105,18 +95,41 @@ public:
         size_t respSize = 0;
 
         clnt_stat res = Call(protorpc::RPC_PING, nullptr, 0, resp, respSize);
-        
         if(res != RPC_SUCCESS)
         {
             printf("%s: Call() failed\n", __func__);
-            //assert(false);
             return false;
         }
         else if(resp != nullptr || respSize != 0)
         {
             // We expect an empty response
             printf("%s: Call() failed (resp must be empty): resp=%p, respSize=%lu\n", __func__, resp, respSize);
-            
+            if(resp)
+                free(resp); // Clean up...
+            return false;
+        }
+
+        printf("%s: Call() succeeded\n", __func__);
+        return true;
+    }
+
+    bool TestShutdown()
+    {
+        // Send an empty Ping message
+        void* resp = NULL;
+        size_t respSize = 0;
+
+        clnt_stat res = Call(protorpc::RPC_SHUTDOWN, nullptr, 0, resp, respSize);
+        
+        if(res != RPC_SUCCESS)
+        {
+            printf("%s: Call() failed\n", __func__);
+            return false;
+        }
+        else if(resp != nullptr || respSize != 0)
+        {
+            // We expect an empty response
+            printf("%s: Call() failed (resp must be empty): resp=%p, respSize=%lu\n", __func__, resp, respSize);
             if(resp)
                 free(resp); // Clean up...
             return false;
@@ -161,10 +174,10 @@ int main(int argc, char *argv[])
         // For Echo test, simulate multiple clients running simultaneously
         // Since RPC client doesn't support multithreading, let's use multiprocessing.
         //
-        //const int numClients = 100; // Number or RPC clients to simulate
-        const int numClients = 10; // Number or RPC clients to simulate
-        //const int numRpcs = 10000;  // Number of RPCs to send per client
-        const int numRpcs = 50;  // Number of RPCs to send per client
+        const int numClients = 100; // Number or RPC clients to simulate
+        //const int numClients = 10; // Number or RPC clients to simulate
+        const int numRpcs = 10000;  // Number of RPCs to send per client
+        //const int numRpcs = 50;  // Number of RPCs to send per client
         
         printf("Simulating %d RPC clients, sending %d rpcs each...\n", numClients, numRpcs);
         
@@ -201,14 +214,33 @@ int main(int argc, char *argv[])
         const int numRpcs = 1; // Number of RPCs to send
         client.TestData(numRpcs);
     }  
-    else
+    else if(argc > 1 && !strcmp(argv[1], "ping"))
     {
         // Create RPC client
         RpcClient client;
         if(!client.Connect(host, port))
             return 1;
         client.TestPing();
+    }
+    else if(argc > 1 && !strcmp(argv[1], "shutdown"))
+    {
+        // Create RPC client
+        RpcClient client;
+        if(!client.Connect(host, port))
+            return 1;
+        client.TestShutdown();
     } 
+    else
+    {
+        // Usupported command option. Print usage.
+        printf("Usage: client <option>\n");
+        printf("Where supported options are:\n");
+        printf("   client ping     --> call an empty Ping RPC\n");
+        printf("   client data     --> call raw data RPC\n");
+        printf("   client shutdown --> call Shutdown RPC to stop the server\n");
+        printf("   client echo     --> simulate multiple clients calling Echo RPC\n");
+        return 1;
+    }
     
     return 0;
 }

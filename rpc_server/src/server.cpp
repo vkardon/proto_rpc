@@ -8,22 +8,6 @@
 // From Geneva code...
 #include <signal.h>
 
-extern "C" typedef void (*fSigHandler)(int);  // signal handler under linux
-
-int Signal(int signum, fSigHandler handler, fSigHandler* ohandler = NULL)
-{
-    struct sigaction sa, old_sa;
-    sa.sa_handler = handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART; // Restart interrupted system calls
-
-    int ret = sigaction(signum, &sa, &old_sa);
-    if(ohandler)
-        *ohandler = old_sa.sa_handler;
-
-    return ret;
-}
-
 class RpcServer : public CRpcServer
 {
 public:
@@ -131,6 +115,20 @@ private:
             }
             break;
 
+            // Empty rpc, no data received/sent
+            case protorpc::RPC_SHUTDOWN:
+            {
+                printf("Shuttign down...\n");
+                printf("Note: Since this is multi-process server implementation, we can only\n"
+                       "stop the child server process that is connected to this RPC client.\n"
+                       "The parent server will continue to run.\n");
+
+                // Send the empty response to show that we are running
+                out->data_len = 0;
+                out->data_val = (u_char*)nullptr;
+            }
+            break;
+
             // Protobuf rpc
             case protorpc::RPC_ECHO:
             {
@@ -180,17 +178,27 @@ private:
 
     virtual void OnCleanup(CRpc::param* out)
     {
+        // We can use OnCleanup to shutdown the server
+        if(out->type == protorpc::RPC_SHUTDOWN)
+        {
+            // Note: In multi-process server implementation, this willl only
+            // stop the child server process. It will have no effect on parent
+            // server process.
+            Stop();
+        }
+
         // Clean up the response...
         if(out == nullptr || out->data_val == nullptr)
             return;
 
         switch(out->type)
         {
+            // This is raw RPC
             case protorpc::RPC_DATA:
                 free(out->data_val);
                 break;
 
-            // Is this for Protobuf message call?
+            // This is Protobuf RPC
             case protorpc::RPC_ECHO:
                 CRpc::MsgPtrDelete(out->data_val);
                 break;
@@ -208,7 +216,6 @@ private:
     virtual void LogError(const char* err) { printf("[ERROR] %d: %s\n", getpid(), err); }
 };
 
-
 int main(int argc, char* argv[])
 {
     // Set stdout and stoerr to "line buffered": On output, data is written when
@@ -220,11 +227,14 @@ int main(int argc, char* argv[])
     //unsigned short port = 8000;
     unsigned short port = 53900;
 
-    fSigHandler old_SIGCHLD_handler = NULL;
-
     // Ignore the SIGCHLD to prevent children from transforming into
     // zombies so we don't need to wait and reap them.
-    if(Signal(SIGCHLD, SIG_IGN, &old_SIGCHLD_handler) < 0)
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART; // Restart interrupted system calls
+
+    if(sigaction(SIGCHLD, &sa, nullptr) < 0)
     {
         printf("ERROR: sigaction(SIGCHLD) failed: %s\n", strerror(errno));
         return 1;
@@ -236,12 +246,5 @@ int main(int argc, char* argv[])
     server.Run(port, 2); // 2 seconds timeout
 
     //printf("%d: RPC server: stopped\n", getpid());
-
-    // Restore the original SIGCHLD handler
-    if(Signal(SIGCHLD, old_SIGCHLD_handler) < 0)
-    {
-        printf("ERROR: sigaction(SIGCHLD old) failed: %s\n", strerror(errno));
-    }
-
-    return 0; // NOTREACHED
+    return 0;
 }

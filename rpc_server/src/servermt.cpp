@@ -8,22 +8,6 @@
 #include <thread>
 #include "threadPool.h"
 
-extern "C" typedef void (*fSigHandler)(int);  
-
-int Signal(int signum, fSigHandler handler, fSigHandler* ohandler = NULL)
-{
-    struct sigaction sa, old_sa;
-    sa.sa_handler = handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART; // Restart interrupted system calls 
-
-    int ret = sigaction(signum, &sa, &old_sa);
-    if(ohandler)
-        *ohandler = old_sa.sa_handler;
-
-    return ret;
-}
-
 class RpcServerMt : public CRpcServer
 {
     class CTpool : public CThreadPool
@@ -54,9 +38,13 @@ class RpcServerMt : public CRpcServer
     };
 
 public:
-    RpcServerMt() : mTPool(this) 
+    RpcServerMt(int threadCount) : mTPool(this)
     {
-        mTPool.Create(50, "RpcServerThreadPool");
+#if defined (__APPLE__) || defined(__MACH__)
+        mTPool.Create(threadCount, "RpcServerThreadPool");
+#else
+        mTPool.Create(threadCount);
+#endif
     }
     ~RpcServerMt() = default;
 
@@ -135,6 +123,17 @@ private:
             }
             break;
 
+            // Empty rpc, no data received/sent
+            case protorpc::RPC_SHUTDOWN:
+            {
+                // Note: We will be using OnCleanup to shutdown the server
+
+                // Send the empty response to show that we are running
+                out->data_len = 0;
+                out->data_val = (u_char*)nullptr;
+            }
+            break;
+
             // Protobuf rpc
             case protorpc::RPC_ECHO:
             {
@@ -184,6 +183,12 @@ private:
 
     virtual void OnCleanup(CRpc::param* out)
     {
+        // We can use OnCleanup to shutdown the server
+        if(out->type == protorpc::RPC_SHUTDOWN)
+        {
+            Stop();
+        }
+
         // Clean up the response...
         if(out == nullptr || out->data_val == nullptr)
             return;
@@ -222,29 +227,12 @@ int main(int argc, char* argv[])
 
     //unsigned short port = 8000;
     unsigned short port = 53900;
+    int threadCount = 30;  // Number of threads to run
 
-    fSigHandler old_SIGCHLD_handler = NULL;
+    printf("%d: RPC server started on port %d with %d threads...\n", getpid(), port, threadCount);
 
-    // Ignore the SIGCHLD to prevent children from transforming into
-    // zombies so we don't need to wait and reap them.
-    if(Signal(SIGCHLD, SIG_IGN, &old_SIGCHLD_handler) < 0)
-    {
-        printf("ERROR: sigaction(SIGCHLD) failed: %s\n", strerror(errno));
-        return 1;
-    }
-
-    printf("%d: RPC server started on port %d ...\n", getpid(), port);
-
-    RpcServerMt server;
+    RpcServerMt server(threadCount);
     server.Run(port, 2); // 2 seconds timeout
 
-    //printf("%d: RPC server: stopped\n", getpid());
-
-    // Restore the original SIGCHLD handler
-    if(Signal(SIGCHLD, old_SIGCHLD_handler) < 0)
-    {
-        printf("ERROR: sigaction(SIGCHLD old) failed: %s\n", strerror(errno));
-    }
-
-    return 0; // NOTREACHED
+    return 0;
 }

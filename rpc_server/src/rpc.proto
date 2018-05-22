@@ -5,9 +5,10 @@ package protorpc;
 enum RPC_TYPE
 {
     RPC_UNKNOWN = 0;
-    RPC_PING    = 1; // Empty rpc, no data sent
-    RPC_DATA    = 2; // Raw data rpc
-    RPC_ECHO    = 3; // Protobuf rpc
+    RPC_SHUTDOWN = 1; // Empty rpc, no data sent
+    RPC_PING     = 2; // Empty rpc, no data sent
+    RPC_DATA     = 3; // Raw data rpc
+    RPC_ECHO     = 4; // Protobuf rpc
 }
 
 message EchoRequest

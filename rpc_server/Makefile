@@ -83,7 +83,7 @@ else ifeq "$(OS)" "SunOS"
   ARFLAGS = rcs
 else 
   CC = g++
-  CFLAGS = -std=c++11 -D NDEBUG -O3 -Wall -fPIC -pthread
+  CFLAGS = -std=c++11 -D NDEBUG -O3 -Wall -fPIC
   LD = $(CC)
   LDFLAGS = 
   AR = ar
@@ -91,12 +91,10 @@ else
 endif
 
 # Build target(s)
-ifeq "$(OS)" "SunOS"
-  all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN)
-else ifeq "$(OS)" "Linux"
+ifeq "$(OS)" "Linux"
   all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN) $(TARGET_SMT)
 else
-  all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN) $(TARGET_SMT)
+  all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN)
 endif
 
 $(TARGET_LIB): $(OBJS_LIB)
@@ -109,7 +107,7 @@ $(TARGET_CLN): $(PROTO_CC) $(OBJS_CLN) $(TARGET_LIB)
 	$(LD) $(LDFLAGS) -o $(TARGET_CLN) $(OBJS_CLN) $(LIBS)
 
 $(TARGET_SMT): $(PROTO_CC) $(OBJS_SMT) $(TARGET_LIB)
-	$(LD) $(LDFLAGS) -o $(TARGET_SMT) $(OBJS_SMT) $(LIBS) -lpthread
+	$(LD) $(LDFLAGS) -o $(TARGET_SMT) $(OBJS_SMT) $(LIBS) -pthread
 
 # Compile source files
 # Add -MP to generate dependency list
