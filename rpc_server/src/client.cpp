@@ -161,10 +161,10 @@ int main(int argc, char *argv[])
         // For Echo test, simulate multiple clients running simultaneously
         // Since RPC client doesn't support multithreading, let's use multiprocessing.
         //
-        const int numClients = 100; // Number or RPC clients to simulate
-        //const int numClients = 10; // Number or RPC clients to simulate
-        const int numRpcs = 10000;  // Number of RPCs to send per client
-        //const int numRpcs = 50;  // Number of RPCs to send per client
+        //const int numClients = 100; // Number or RPC clients to simulate
+        const int numClients = 10; // Number or RPC clients to simulate
+        //const int numRpcs = 10000;  // Number of RPCs to send per client
+        const int numRpcs = 50;  // Number of RPCs to send per client
         
         printf("Simulating %d RPC clients, sending %d rpcs each...\n", numClients, numRpcs);
         

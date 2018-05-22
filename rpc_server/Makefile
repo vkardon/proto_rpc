@@ -13,7 +13,7 @@ OBJ_DIR = $(PROJECT_HOME)/_obj
 SRCS_LIB = $(SRC_DIR)/rpc.cpp
 SRCS_SRV = $(SRC_DIR)/server.cpp
 SRCS_CLN = $(SRC_DIR)/client.cpp
-SRCS_SMT = $(SRC_DIR)/servermt.cpp
+SRCS_SMT = $(SRC_DIR)/servermt.cpp $(SRC_DIR)/threadPool.cpp
 
 # Protobuf files 
 PROTO_SRCS = $(SRC_DIR)/rpc.proto
@@ -45,12 +45,8 @@ INCS = -I$(PROTO_INC) \
 LIBS = $(PROTO_LIB)/libprotobuf.a \
        $(PROJECT_HOME)/libprotorpc.a
 
-ifeq "$(OS)" "Linux"
-  #
-else ifeq "$(OS)" "SunOS"
+ifeq "$(OS)" "SunOS"
   LIBS += -lrpcsoc -lnsl -lrt -lresolv -lsocket
-else
-  #
 endif
 
 # Protobuf files to generate from *.proto files 
@@ -95,10 +91,12 @@ else
 endif
 
 # Build target(s)
-ifeq "$(OS)" "Linux"
+ifeq "$(OS)" "SunOS"
+  all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN)
+else ifeq "$(OS)" "Linux"
   all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN) $(TARGET_SMT)
 else
-  all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN) 
+  all: $(TARGET_LIB) $(TARGET_SRV) $(TARGET_CLN) $(TARGET_SMT)
 endif
 
 $(TARGET_LIB): $(OBJS_LIB)
@@ -111,7 +109,7 @@ $(TARGET_CLN): $(PROTO_CC) $(OBJS_CLN) $(TARGET_LIB)
 	$(LD) $(LDFLAGS) -o $(TARGET_CLN) $(OBJS_CLN) $(LIBS)
 
 $(TARGET_SMT): $(PROTO_CC) $(OBJS_SMT) $(TARGET_LIB)
-	$(LD) $(LDFLAGS) -o $(TARGET_SMT) $(OBJS_SMT) $(LIBS) -pthread
+	$(LD) $(LDFLAGS) -o $(TARGET_SMT) $(OBJS_SMT) $(LIBS) -lpthread
 
 # Compile source files
 # Add -MP to generate dependency list

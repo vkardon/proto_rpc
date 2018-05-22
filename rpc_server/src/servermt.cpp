@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <signal.h>  // sigaction
 #include <thread>
+#include "threadPool.h"
 
 extern "C" typedef void (*fSigHandler)(int);  
 
@@ -25,45 +26,47 @@ int Signal(int signum, fSigHandler handler, fSigHandler* ohandler = NULL)
 
 class RpcServerMt : public CRpcServer
 {
+    class CTpool : public CThreadPool
+    {
+    public:
+        CTpool(RpcServerMt* server) : mServer(server) {}
+        ~CTpool(){ Destroy(); }
+    
+        virtual void OnInitThread(int threadIndx) { printf("OnInitThread: indx=%d\n", threadIndx); }
+        virtual void OnExitThread(int threadIndx) { printf("OnExitThread: indx=%d\n", threadIndx); }
+    
+        virtual void OnThreadProc(int threadIndx, void* request)
+        {   
+            int sock = (int)(int64_t)request;
+
+            // Get the connection host name and ip
+            std::string clientName;
+            std::string clientIp; 
+            mServer->GetClientInfo(sock, clientName, clientIp);
+
+            printf("%s [Thread %d]: Incoming connection from %s (%s), sock=%d\n",
+                __func__, threadIndx, clientIp.c_str(), clientName.c_str(), sock);
+
+            mServer->HandleConnection(sock);
+        }   
+
+        RpcServerMt* mServer = nullptr;
+    };
+
 public:
-    RpcServerMt() = default;
+    RpcServerMt() : mTPool(this) 
+    {
+        mTPool.Create(50, "RpcServerThreadPool");
+    }
     ~RpcServerMt() = default;
 
 private:
     bool mIsChildProcess = false;
-    std::thread threads[128]{};
-
+    CTpool mTPool;   
+ 
     virtual bool OnConnection(int& sock)
     {
-        // Get the connection host name and ip
-        std::string clientName;
-        std::string clientIp;
-        GetClientInfo(sock, clientName, clientIp);
-
-        //printf("%s: Incoming connection from %s (%s), sock=%d\n",
-        //        __func__, clientIp.c_str(), clientName.c_str(), sock);
-
-        // Check if the socket withing the bound of our thread array
-        if(sock >= (sizeof(threads) / sizeof(std::thread)))
-        {
-            printf("%s ERROR: The sock=%d is out of bound\n", __func__, sock);
-            return false;
-        }
-
-        if(threads[sock].joinable())
-        {
-            printf("%s ERROR: The thread for sock=%d already running\n", __func__, sock);
-            return false;
-        }
-
-        // Start new thread to handle the connection
-        threads[sock] = std::thread([&, sock]()
-        {
-            printf("Processing new connection: sock=%d, thread=%lld\n", sock, (long long)pthread_self());
-
-            HandleConnection(sock);
-            threads[sock].detach(); // We are done with the thread
-        });
+        mTPool.PostRequest((void*)(int64_t)sock);
 
         // Reset sock to 0 to have CRpcServer skip handling this connection.
         // This is because we do our own processing (in a different thread).
