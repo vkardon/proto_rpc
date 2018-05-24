@@ -43,7 +43,7 @@ INCS = -I$(PROTO_INC) \
 
 # Libraries
 LIBS = $(PROTO_LIB)/libprotobuf.a \
-       $(PROJECT_HOME)/libprotorpc.a
+       $(PROJECT_HOME)/$(TARGET_LIB)
 
 ifeq "$(OS)" "SunOS"
   LIBS += -lrpcsoc -lnsl -lrt -lresolv -lsocket
