@@ -4,8 +4,6 @@
 #include "rpc.h"
 #include "rpc.pb.h" // Google Protocol Buffers generated header
 #include <unistd.h>
-
-// From Geneva code...
 #include <signal.h>
 
 class RpcServer : public CRpcServer
