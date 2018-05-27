@@ -1,8 +1,8 @@
 //
 // stopWatch.h
 //
-#ifndef __TIME_ELAPSED_H__
-#define __TIME_ELAPSED_H__
+#ifndef __STOP_WATCH_H__
+#define __STOP_WATCH_H__
 
 #include <stdio.h>      // printf()
 #include <string>
@@ -13,11 +13,30 @@ class CStopWatch
     struct timeval start_tv;
     struct timeval stop_tv;
     std::string prefix;
+    bool silentOnExit = false;
 
 public:
-    CStopWatch(const char* _prefix="") : prefix(_prefix) { gettimeofday(&start_tv, NULL); }
-    CStopWatch(const std::string _prefix="") : prefix(_prefix) { gettimeofday(&start_tv, NULL); }
-    ~CStopWatch()
+    CStopWatch(const char* _prefix="", bool _silentOnExit=false) 
+        : prefix(_prefix) , silentOnExit(_silentOnExit) 
+    { 
+        Start(); 
+    }
+
+    CStopWatch(const std::string& _prefix, bool _silentOnExit=false) 
+        : CStopWatch(_prefix.c_str(), _silentOnExit) {}
+
+    ~CStopWatch() 
+    {  
+        if(!silentOnExit) 
+           Stop();  
+    }
+
+    void Start() 
+    { 
+        gettimeofday(&start_tv, NULL); 
+    }
+
+    void Stop()
     {
         gettimeofday(&stop_tv, NULL);
         //long long elapsed = (stop_tv.tv_sec - start_tv.tv_sec)*1000000 + (stop_tv.tv_usec - start_tv.tv_usec);
@@ -40,4 +59,4 @@ public:
     }
 };
 
-#endif // __TIME_ELAPSED_H__
+#endif // __STOP_WATCH_H__
